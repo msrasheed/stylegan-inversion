@@ -34,14 +34,8 @@ class Generator:
     x = torch.Tensor(x).to(self.run_device)
     return x
 
-  def generate_timgs_from_wp(self, wp):
-    wp = wp.view(1, 14, 512).numpy()
-    x = self.G._synthesize(wp, latent_space_type='wp')['image']
-    x = torch.Tensor(x).to(self.run_device)
-    return x
-
   def generate_timgs_from_wps(self, wps):
-    wps = wps.view(-1, 14, 512).numpy()
+    wps = wps.to('cpu').view(-1, 14, 512).detach().numpy()
     xs = self.G.synthesize(wps, latent_space_type='wp')['image']
     return torch.Tensor(xs).to(self.run_device)
 

@@ -1,10 +1,12 @@
 import os
+from tqdm import tqdm
+import torch
 import numpy as np
 from generator import Generator
 from encoder_net import EncoderNet
 from dataset import CelebAHQImgDataset
 from torch.utils.data import DataLoader
-from torch.optim import optim
+import torch.optim as optim
 import torch.nn.functional as F
 from utils.visualizer import save_image
 from models.perceptual_model import PerceptualModel
@@ -12,7 +14,7 @@ from models.perceptual_model import PerceptualModel
 
 def main():
   generator = Generator()
-  encoder = EncoderNet()
+  encoder = EncoderNet().to('cuda')
   feat_model = PerceptualModel(min_val=generator.G.min_val, 
                              max_val=generator.G.max_val)
   imgTrainDataset = CelebAHQImgDataset()
@@ -29,10 +31,10 @@ def main():
                                         gamma=0.1)
 
   num_epochs = 30
-  loss = np.zeros(num_epochs)
+  feat_lambda = 1.0
 
-  def train_loop():
-    for imgs in dataloader:
+  def compute_loss(imgs):
+      imgs = imgs.to('cuda')
       wps = encoder(imgs)
       reimgs = generator.generate_timgs_from_wps(wps)
       img_feats = feat_model.net(imgs)
@@ -41,11 +43,23 @@ def main():
                            reduction='mean')
       featloss = F.mse_loss(img_feats, reimgs_feats,
                             reduction='mean')
-      loss = imgloss + featloss
+      loss = imgloss + feat_lambda * featloss
+      return loss
 
+  def train_loop():
+    for imgs in tqdm(dataloader):
+      optimizer.zero_grad()
+      loss = compute_loss(imgs)
+      loss.backward()
+      optimizer.step()
+    return loss.to('cpu').detach().numpy()
 
   for epoch in range(num_epochs):
-    loss[epoch] = train_loop()
+    loss = train_loop()
+    print(f'{epoch}: loss={loss}')
+    scheduler.step()
+
+  torch.save(encoder.state_dict(), 'encoder_weights.pth')
 
 
 def next_img_name(path='.'):
