@@ -12,7 +12,7 @@ from models.perceptual_model import PerceptualModel
 from models.stylegan_encoder import StyleGANEncoder
 import text_encoder
 
-USE_MY_ENCODER = True
+USE_MY_ENCODER = False
 
 class FallbackEncoder:
   def __init__(self, myImgEncoder=True):
@@ -34,17 +34,14 @@ class FallbackEncoder:
     if self.myImgEncoder:
       return self.encoder(imgs)
     else:
-      return self.encoder.net(imgs).view(1, 14, 512)
+      return self.encoder.net(imgs).view(-1, 14, 512)
   
   def __call__(self, imgs):
     return self.getEncoderWp(imgs)
 
 def main():
-  textenc = text_encoder.TextEncoder()
+  textenc = text_encoder.TextEncoder().to('cuda')
   encoder = FallbackEncoder(USE_MY_ENCODER)
-  encoder.load_state_dict(torch.load('encoder_weights.pth'))
-  encoder.to('cuda')
-  encoder.eval()
   textTrainDataset = dataset.CelebAHQTextDataset()
   dataloader = DataLoader(textTrainDataset,
                           batch_size=4,
@@ -63,10 +60,14 @@ def main():
   def compute_loss(descs, imgs):
       descs = descs.to('cuda')
       imgs = imgs.to('cuda')
-      imgs_wps = encoder(imgs)
-      descs_wps = textenc(descs)
-      loss = F.mse_loss(imgs_wps, descs_wps, 
+      imgs_wps = encoder(imgs).view(-1, 14, 512)
+      descs_wps = textenc(descs).view(-1, 11, 14, 512)
+      loss = 0
+      for i in range(4):
+        for j in range(11):
+          loss += F.mse_loss(imgs_wps[i], descs_wps[i][j],
                            reduction='mean')
+      
       return loss
 
   def train_loop():

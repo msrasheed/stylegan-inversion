@@ -2,9 +2,9 @@ import os
 from tqdm import tqdm
 import torch
 import numpy as np
+import dataset
 from generator import Generator
 from encoder_net import EncoderNet
-from dataset import CelebAHQImgDataset
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn.functional as F
@@ -17,17 +17,17 @@ def main():
   encoder = EncoderNet().to('cuda')
   feat_model = PerceptualModel(min_val=generator.G.min_val, 
                              max_val=generator.G.max_val)
-  imgTrainDataset = CelebAHQImgDataset()
+  imgTrainDataset = dataset.trainImgDataset()
   dataloader = DataLoader(imgTrainDataset,
                           batch_size=4,
                           shuffle=True,
                           num_workers=0,
                           pin_memory=True)
   optimizer = optim.SGD(encoder.parameters(),
-                        lr=0.01,
+                        lr=0.001,
                         momentum=0.9)
   scheduler = optim.lr_scheduler.StepLR(optimizer, 
-                                        step_size=30, 
+                                        step_size=10, 
                                         gamma=0.1)
 
   num_epochs = 30
@@ -59,7 +59,7 @@ def main():
     print(f'{epoch}: loss={loss}')
     scheduler.step()
 
-  torch.save(encoder.state_dict(), 'encoder_weights.pth')
+  torch.save(encoder.state_dict(), 'encoder_weights2.pth')
 
 
 def next_img_name(path='.'):

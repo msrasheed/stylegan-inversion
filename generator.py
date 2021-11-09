@@ -29,7 +29,7 @@ class Generator:
     return viz_results
 
   def generate_timg_from_wp(self, wp):
-    wp = wp.view(1, 14, 512).numpy()
+    wp = wp.view(1, 14, 512).cpu().detach().numpy()
     x = self.G._synthesize(wp, latent_space_type='wp')['image']
     x = torch.Tensor(x).to(self.run_device)
     return x

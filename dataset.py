@@ -21,25 +21,6 @@ def trainTextDataset():
   return CelebAHQTextDataset()
 
 
-class CelebAHQImgDataset(Dataset):
-  def __init__(self):
-    with open(TRAIN_FILENAMES_FILE, 'rb') as trainpkl:
-      self.files = pickle.load(trainpkl)
-    self.transform = T.Compose([
-      T.Resize((256, 256)),
-      T.ToTensor()
-    ])
-    
-  def __len__(self):
-    return len(self.files)
-  
-  def __getitem__(self, idx):
-    file = self.files[idx]
-    filename = os.path.join(IMG_DIR, file + '.jpg')
-    image = Image.open(filename)
-    return self.transform(image)
-
-
 class CelebAHQImgDataset2(Dataset):
   def __init__(self, files_file, data_dir):
     with open(files_file, 'rb') as trainpkl:
@@ -51,7 +32,8 @@ class CelebAHQImgDataset2(Dataset):
     ])
     
   def __len__(self):
-    return len(self.files)
+    # return len(self.files)
+    return 3000
   
   def __getitem__(self, idx):
     file = self.files[idx]
@@ -68,7 +50,7 @@ class CelebAHQTextDataset(Dataset):
   
   def __getitem__(self, idx):
     filename = self.imgdata.files[idx]
-    filename = os.path.join(TEXT_DIR, filename + 'txt')
+    filename = os.path.join(TEXT_DIR, filename + '.txt')
     with open(filename, 'r') as descfile:
       desc = descfile.read().split('\n')
     desc_tokens = clip.tokenize(desc)    
