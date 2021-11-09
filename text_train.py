@@ -12,28 +12,36 @@ from models.perceptual_model import PerceptualModel
 from models.stylegan_encoder import StyleGANEncoder
 import text_encoder
 
-myImgEncoder = True
+USE_MY_ENCODER = True
 
-def getImgEncoder():
-  if myImgEncoder:
-    encoder = EncoderNet()
-    encoder.load_state_dict(torch.load('encoder_weights.pth'))
-    encoder.to('cuda')
-    encoder.eval()
-    return encoder
-  else:
-    encoder = StyleGANEncoder('styleganinv_ffhq256', None)
-    return encoder
+class FallbackEncoder:
+  def __init__(self, myImgEncoder=True):
+    self.myImgEncoder = myImgEncoder
+    self.encoder = self.getImgEncoder()
 
-def getEncoderWp(encoder, imgs):
-  if myImgEncoder:
-    return encoder(imgs)
-  else:
-    return encoder.net(imgs).view(1, 14, 512)
+  def getImgEncoder(self):
+    if self.myImgEncoder:
+      encoder = EncoderNet()
+      encoder.load_state_dict(torch.load('encoder_weights.pth'))
+      encoder.to('cuda')
+      encoder.eval()
+      return encoder
+    else:
+      encoder = StyleGANEncoder('styleganinv_ffhq256', None)
+      return encoder
+
+  def getEncoderWp(self, imgs):
+    if self.myImgEncoder:
+      return self.encoder(imgs)
+    else:
+      return self.encoder.net(imgs).view(1, 14, 512)
+  
+  def __call__(self, imgs):
+    return self.getEncoderWp(imgs)
 
 def main():
   textenc = text_encoder.TextEncoder()
-  encoder = getImgEncoder()
+  encoder = FallbackEncoder(USE_MY_ENCODER)
   encoder.load_state_dict(torch.load('encoder_weights.pth'))
   encoder.to('cuda')
   encoder.eval()
@@ -55,7 +63,7 @@ def main():
   def compute_loss(descs, imgs):
       descs = descs.to('cuda')
       imgs = imgs.to('cuda')
-      imgs_wps = getEncoderWp(encoder, imgs)
+      imgs_wps = encoder(imgs)
       descs_wps = textenc(descs)
       loss = F.mse_loss(imgs_wps, descs_wps, 
                            reduction='mean')
