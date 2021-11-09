@@ -1,4 +1,6 @@
+import cv2
 import torch
+import numpy as np
 from models.stylegan_generator import StyleGANGenerator
 from models.perceptual_model import PerceptualModel
 from utils.visualizer import save_image, load_image, resize_image
@@ -7,7 +9,7 @@ def _get_tensor_value(tensor):
   """Gets the value of a torch Tensor."""
   return tensor.cpu().detach().numpy()
   
-class Inverter:
+class Generator:
   def __init__(self):
     self.model_name = 'styleganinv_ffhq256'
     self.logger = None
@@ -19,15 +21,29 @@ class Inverter:
     init_z = self.G.sample(1, latent_space_type='wp',
                            z_space_dim=512, num_layers=14)
     init_z = self.G.preprocess(init_z, latent_space_type='wp')
-    z = torch.Tensor(init_z).to(self.run_device)
-    z.requires_grad = True
     x = self.G._synthesize(init_z, latent_space_type='wp')['image']
-    x = torch.Tensor(x).to(self.run_device)
 
     viz_results = []
-    viz_results.append(self.G.postprocess(_get_tensor_value(x))[0])
+    viz_results.append(self.G.postprocess(x)[0])
 
     return viz_results
+
+  def generate_timg_from_wp(self, wp):
+    wp = wp.view(1, 14, 512).numpy()
+    x = self.G._synthesize(wp, latent_space_type='wp')['image']
+    x = torch.Tensor(x).to(self.run_device)
+    return x
+
+  def generate_timgs_from_wp(self, wp):
+    wp = wp.view(1, 14, 512).numpy()
+    x = self.G._synthesize(wp, latent_space_type='wp')['image']
+    x = torch.Tensor(x).to(self.run_device)
+    return x
+
+  def generate_timgs_from_wps(self, wps):
+    wps = wps.view(-1, 14, 512).numpy()
+    xs = self.G.synthesize(wps, latent_space_type='wp')['image']
+    return torch.Tensor(xs).to(self.run_device)
 
   def preprocess(self, image):
     """Preprocesses a single image.
@@ -67,6 +83,3 @@ class Inverter:
     image = image.astype(np.float32).transpose(2, 0, 1)
 
     return image
-
-if __name__ == "__main__":
-  main()
