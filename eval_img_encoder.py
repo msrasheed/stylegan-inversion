@@ -7,7 +7,7 @@ from utils.visualizer import save_image
 from tqdm import tqdm
 import project
 import numpy as np
-from text_train import FallbackEncoder
+from encoder import Encoder
 
 def extract_img_from_stylegan_tensor(x):
   images = x.cpu().detach().numpy()
@@ -20,8 +20,8 @@ def main():
   # data = dataset.testImgDataset()
   data = dataset.testImgDataset()
   generator = project.loadStyleGan()
-  encoder = FallbackEncoder(use_fallback=False,
-                            weights_path='encoder_weights_test.pth')
+  encoder = Encoder(use_fallback=False,
+                    weights_path='encoder_weights_pretrain2.pth')
 
   for idx in tqdm(range(len(data))):
     img = data[idx]

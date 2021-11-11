@@ -9,6 +9,7 @@ import generator as gen
 from models.perceptual_model import PerceptualModel
 
 
+@unittest.skip('not now')
 class TestEncoderNet(unittest.TestCase):
   def setUp(self):
     self.enc = en.EncoderNet()
@@ -24,6 +25,7 @@ class TestEncoderNet(unittest.TestCase):
     self.assertTrue(x.shape == (1, 512 * 14))
 
 
+@unittest.skip('not now')
 class TestImgDataset(unittest.TestCase):
   def setUp(self):
     self.dataset = data.CelebAHQImgDataset()
@@ -62,6 +64,7 @@ class TestGenerator(unittest.TestCase):
     self.assertTrue(images.shape[1:] == (3, 256, 256))
 
 
+@unittest.skip('not now')
 class TestPerceptualModel(unittest.TestCase):
   def setUp(self):
     self.feat_model = PerceptualModel(-1, 1)
@@ -71,6 +74,20 @@ class TestPerceptualModel(unittest.TestCase):
     feats = self.feat_model.net(test_imgs)
     self.assertTrue(feats.shape[0] == 4)
 
+
+class TestPretrainDataset(unittest.TestCase):
+  def setUp(self):
+    self.data = data.WPlusGeneratingDataset()
+
+  def test_gen_sample(self):
+    wp, img = self.data[0]
+    self.assertIsInstance(wp, torch.Tensor)
+    self.assertTrue(wp.shape == (14, 512),
+        msg=f"wp shape = {wp.shape}")
+    self.assertIsInstance(img, torch.Tensor)
+    self.assertTrue(img.shape == (3, 256, 256),
+        msg=f"img shape = {img.shape}")
+    
     
 if __name__ == "__main__":
   unittest.main()

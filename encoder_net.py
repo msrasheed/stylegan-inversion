@@ -200,6 +200,6 @@ class LastBlock(nn.Module):
 
   def forward(self, x):
     x = x.view(x.shape[0], -1)
-    x = self.fc(x) * self.scale / np.sqrt(2)
+    x = self.fc(x) * self.scale
     x = x.view(x.shape[0], x.shape[1], 1, 1)
     return self.bn(x).view(x.shape[0], x.shape[1])

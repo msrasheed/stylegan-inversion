@@ -1,18 +1,17 @@
 import os
-from tqdm import tqdm
+import sys
 import torch
-import numpy as np
 import dataset
+import numpy as np
+from tqdm import tqdm
 from models.stylegan_generator_network import StyleGANGeneratorNet
-from generator import Generator
-from encoder_net import EncoderNet
+from encoder import Encoder
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn.functional as F
 from utils.visualizer import save_image
 from models.perceptual_model import VGG16
 from signal import signal, SIGINT
-import sys
 
 def loadStyleGan():
   return StyleGAN()
@@ -45,7 +44,9 @@ def loadFeatureNet():
 
 def main():
   generator = loadStyleGan()
-  encoder = EncoderNet().to('cuda')
+  encoder = Encoder(use_fallback=False,
+                    weights_path='encoder_weights_pretrain2.pth',
+                    train=True)
   feat_model = loadFeatureNet()
   imgTrainDataset = dataset.trainImgDataset()
   dataloader = DataLoader(imgTrainDataset,
@@ -53,11 +54,6 @@ def main():
                           shuffle=True,
                           num_workers=0,
                           pin_memory=True)
-  optimizer = optim.AdamW(encoder.parameters())
-  scheduler = optim.lr_scheduler.StepLR(optimizer, 
-                                        step_size=5, 
-                                        gamma=0.1)
-  # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
   num_epochs = 30
   feat_lambda = 1.0
@@ -94,9 +90,15 @@ def main():
       losshist[i] = loss.cpu().detach().numpy()
     return np.mean(losshist)
 
+
+  optimizer = optim.SGD(encoder.parameters(),
+                        lr=0.00001, momentum=0.9)
+  scheduler = optim.lr_scheduler.StepLR(optimizer, 
+                                        step_size=10, 
+                                        gamma=0.1)
   for epoch in range(num_epochs):
     loss = train_loop()
-    print(f'{epoch}: loss={loss}')
+    print(f'{epoch+15}: loss={loss}')
     scheduler.step()
 
   torch.save(encoder.state_dict(), 'encoder_weights_2.pth')
