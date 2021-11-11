@@ -15,26 +15,28 @@ import text_encoder
 USE_MY_ENCODER = False
 
 class FallbackEncoder:
-  def __init__(self, myImgEncoder=True):
-    self.myImgEncoder = myImgEncoder
+  def __init__(self, use_fallback=False,
+               weights_path='encoder_weights.pth'):
+    self.use_fallback = use_fallback
+    self.weights_path = weights_path
     self.encoder = self.getImgEncoder()
 
   def getImgEncoder(self):
-    if self.myImgEncoder:
+    if self.use_fallback:
+      encoder = StyleGANEncoder('styleganinv_ffhq256', None)
+      return encoder
+    else:
       encoder = EncoderNet()
-      encoder.load_state_dict(torch.load('encoder_weights.pth'))
+      encoder.load_state_dict(torch.load(self.weights_path))
       encoder.to('cuda')
       encoder.eval()
       return encoder
-    else:
-      encoder = StyleGANEncoder('styleganinv_ffhq256', None)
-      return encoder
 
   def getEncoderWp(self, imgs):
-    if self.myImgEncoder:
-      return self.encoder(imgs)
-    else:
+    if self.use_fallback:
       return self.encoder.net(imgs).view(-1, 14, 512)
+    else:
+      return self.encoder(imgs)
   
   def __call__(self, imgs):
     return self.getEncoderWp(imgs)

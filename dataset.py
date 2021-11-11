@@ -33,7 +33,8 @@ class CelebAHQImgDataset2(Dataset):
     
   def __len__(self):
     # return len(self.files)
-    return 3000
+    # return 3000
+    return 500
   
   def __getitem__(self, idx):
     file = self.files[idx]

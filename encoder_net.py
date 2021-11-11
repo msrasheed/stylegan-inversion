@@ -67,21 +67,23 @@ class AveragePoolingLayer(nn.Module):
     strides = [self.scale_factor, self.scale_factor]
     return F.avg_pool2d(x, kernel_size=ksize, stride=strides, padding=0)
 
-class FirstBlock(nn.Module):
-  def __init__(self,
-               in_channels=3,
-               out_channels=64):
+class BatchNormLayer(nn.Module):
+  def __init__(self, channels):
     super().__init__()
-    self.conv = nn.Conv2d(in_channels=3,
-                          out_channels=64,
-                          kernel_size=3,
-                          stride=1,
-                          padding=1,
-                          bias=False)
-    self.activate = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+    decay = 0.9
+    epsilon = 1e-5
+    gamma = False
+    beta = True
+    self.bn = nn.BatchNorm2d(num_features=channels,
+                             affine=True,
+                             track_running_stats=True,
+                             momentum=1 - decay,
+                             eps=epsilon)
+    self.bn.weight.requires_grad = gamma
+    self.bn.bias.requires_grad = beta
 
   def forward(self, x):
-    return self.activate(self.conv(x))
+    return self.bn(x)
     
 class WScaleLayer(nn.Module):
   def __init__(self,
@@ -104,6 +106,24 @@ class WScaleLayer(nn.Module):
                      f'channel, height, width], or [batch_size, channel]!\n'
                      f'But {x.shape} is received!')
 
+class FirstBlock(nn.Module):
+  def __init__(self,
+               in_channels=3,
+               out_channels=64):
+    super().__init__()
+    self.conv = nn.Conv2d(in_channels=3,
+                          out_channels=64,
+                          kernel_size=3,
+                          stride=1,
+                          padding=1,
+                          bias=False)
+    self.activate = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    self.bn = BatchNormLayer(channels=out_channels)
+
+  def forward(self, x):
+    return self.activate(self.bn(self.conv(x)))
+
 class ResBlock(nn.Module):
   def __init__(self,
                in_channels,
@@ -121,6 +141,7 @@ class ResBlock(nn.Module):
                             stride=1,
                             padding=0,
                             bias=False) 
+      self.bn = BatchNormLayer(channels=out_channels)
     else:
       self.add_shortcut = False
       self.identity = nn.Identity()
@@ -138,7 +159,7 @@ class ResBlock(nn.Module):
                                out_channels=hidden_channels,
                                kernel_size=3,
                                gain=1.0)
-    # self.bn1 = nn.Identity() 
+    self.bn1 = BatchNormLayer(channels=hidden_channels)
 
     self.conv2 = nn.Conv2d(in_channels=hidden_channels,
                            out_channels=out_channels,
@@ -151,17 +172,17 @@ class ResBlock(nn.Module):
                                out_channels=out_channels,
                                kernel_size=3,
                                gain=1.0)
-    # self.bn2 = nn.Identity()
+    self.bn2 = BatchNormLayer(channels=out_channels)
 
     self.activate = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
   def forward(self, x):
     if self.add_shortcut:
-      y = self.activate(self.conv(x))
+      y = self.activate(self.bn(self.conv(x)))
     else:
       y= self.identity(x)
-    x = self.activate(self.wscale1(self.conv1(x)))
-    x = self.activate(self.wscale2(self.conv2(x)))
+    x = self.activate(self.bn1(self.wscale1(self.conv1(x))))
+    x = self.activate(self.bn2(self.wscale2(self.conv2(x))))
     return x + y
 
 class LastBlock(nn.Module):
@@ -170,13 +191,15 @@ class LastBlock(nn.Module):
                out_channels):
     super().__init__()
 
+    wscale_gain = 1.0
     self.fc = nn.Linear(in_features=in_channels,
                         out_features=out_channels,
                         bias=False)
-    self.scale = 1.0 / np.sqrt(in_channels)
+    self.scale = wscale_gain / np.sqrt(in_channels)
+    self.bn = BatchNormLayer(channels=out_channels)
 
   def forward(self, x):
     x = x.view(x.shape[0], -1)
-    x = self.fc(x) * self.scale
+    x = self.fc(x) * self.scale / np.sqrt(2)
     x = x.view(x.shape[0], x.shape[1], 1, 1)
-    return x.view(x.shape[0], x.shape[1])
+    return self.bn(x).view(x.shape[0], x.shape[1])
