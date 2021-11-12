@@ -21,7 +21,7 @@ def main():
   data = dataset.testImgDataset()
   generator = project.loadStyleGan()
   encoder = Encoder(use_fallback=False,
-                    weights_path='encoder_weights_pretrain2.pth')
+                    weights_path='encoder_weights2.pth')
 
   for idx in tqdm(range(len(data))):
     img = data[idx]

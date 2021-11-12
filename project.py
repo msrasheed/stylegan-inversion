@@ -59,7 +59,7 @@ def main():
   feat_lambda = 1.0
 
   def intHandler(sigNum, frame):
-    weight_name = 'encoder_weights_test.pth'
+    weight_name = 'encoder_weights_test2.pth'
     save_weights = input("\nsave weights? y/[n]:")
     if save_weights == 'y':
       torch.save(encoder.state_dict(), weight_name)
@@ -98,10 +98,10 @@ def main():
                                         gamma=0.1)
   for epoch in range(num_epochs):
     loss = train_loop()
-    print(f'{epoch+15}: loss={loss}')
+    print(f'{epoch}: loss={loss}')
     scheduler.step()
 
-  torch.save(encoder.state_dict(), 'encoder_weights_2.pth')
+  torch.save(encoder.state_dict(), 'encoder_weights2.pth')
 
 
 def next_img_name(path='.'):
